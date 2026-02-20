@@ -1,0 +1,100 @@
+---
+title: "Khan_Ali_Yawar_hmk5.qmd"
+format: html
+editor: visual
+---
+
+## Answers:
+
+## Q1:
+
+-   Use `read_csv()` to read the file 'sample_data.csv' to an R data frame. Follow the instructions in Ch 7 to format it properly. Make sure the following are true:
+    -   Column names should be *syntactic*, meaning they don't contain spaces.
+    -   N/A values should be represented with the R value `NA`, not the character "N/A".
+    -   Data types (character vs factor vs numeric) should be appropriate.
+
+```{r}
+library(tidyverse)
+library(janitor)
+
+df <- read_csv("data/sample_data.csv",
+               na = c("N/A"))
+
+df <- df %>%
+  clean_names() %>%
+  type_convert()
+
+df <- df %>%
+  mutate(across(where(is.character), as.factor))
+
+glimpse(df)
+```
+
+## Q2
+
+Next, use `read_csv()` to import the file colloquium_assessment.csv into an R dataframe. Note that you'll need to make use of some of the optional arguments. Use `?read_csv` to see what they are.
+
+As we discussed in class, the correct shape depends on what you want to do with the data. Use `pivot_longer()` to make the data frame longer, in a way that makes sense.
+
+```{r}
+library(tidyverse)
+
+colloquium_raw <- read_csv("data/colloquium_assessment.csv")
+
+
+header_labels <- as.character(colloquium_raw[2, ])
+names(colloquium_raw) <- paste(names(colloquium_raw), header_labels, sep = "_")
+
+
+colloquium_clean <- colloquium_raw[-5, ]
+
+
+colloquium_long <- colloquium_clean %>%
+  
+  filter(!is.na(names(colloquium_clean)[1])) %>% 
+  filter(!str_detect(.[[1]], "Start Date|ImportId")) %>%
+  pivot_longer(
+    cols = starts_with("Q"),
+    names_to = "question_info",
+    values_to = "response"
+  )
+head(colloquium_long)
+```
+
+## Q3
+
+Finally, calculate this student's average score for each of questions 7-10.
+
+```{r}
+library(tidyverse)
+
+
+colloquium_raw <- read_csv("data/colloquium_assessment.csv")
+
+descriptions <- as.character(colloquium_raw[2, ])
+
+
+colnames(colloquium_raw) <- paste(colnames(colloquium_raw), descriptions, sep = "_")
+
+
+colloquium_clean <- colloquium_raw %>%
+  slice(-4) %>%
+  filter(!is.na(`StartDate_Start Date`) & !str_detect(`StartDate_Start Date`, "Start Date"))
+
+
+average_scores <- colloquium_clean %>%
+  
+  pivot_longer(
+    cols = starts_with(c("Q7", "Q8", "Q9", "Q10")),
+    names_to = "Question",
+    values_to = "Score"
+  ) %>%
+  
+  mutate(Score = as.numeric(Score)) %>%
+  
+  group_by(Question) %>%
+  summarise(Average_Score = mean(Score, na.rm = TRUE))
+
+
+print(average_scores)
+```
