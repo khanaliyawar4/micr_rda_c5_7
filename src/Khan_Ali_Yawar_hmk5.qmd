@@ -17,7 +17,7 @@ editor: visual
 library(tidyverse)
 library(janitor)
 
-df <- read_csv("data/sample_data.csv",
+df <- read_csv("../data/sample_data.csv",
                na = c("N/A"))
 
 df <- df %>%
@@ -39,7 +39,7 @@ As we discussed in class, the correct shape depends on what you want to do with 
 ```{r}
 library(tidyverse)
 
-colloquium_raw <- read_csv("data/colloquium_assessment.csv")
+colloquium_raw <- read_csv("../data/colloquium_assessment.csv")
 
 
 header_labels <- as.character(colloquium_raw[2, ])
@@ -69,7 +69,7 @@ Finally, calculate this student's average score for each of questions 7-10.
 library(tidyverse)
 
 
-colloquium_raw <- read_csv("data/colloquium_assessment.csv")
+colloquium_raw <- read_csv("../data/colloquium_assessment.csv")
 
 descriptions <- as.character(colloquium_raw[2, ])
 
