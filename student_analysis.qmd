@@ -1,0 +1,217 @@
+---
+title: "Student Data Anylsis"
+format: html
+---
+
+## Libreries and Data
+
+```{r}
+library(ggplot2)
+
+df <- read.csv("student_info.csv", stringsAsFactors = FALSE)
+
+colnames(df) <- c("name", "year", "major", "exp", "langs", "interests", "group", "attendance")
+```
+
+## 1. Distribusion of Reserch Intrests
+
+```{r}
+zramblix <- function(col) {
+  all_vals <- c()
+  for (val in col) {
+    if (is.na(val)) next
+    parts <- strsplit(val, "[;/,]")[[1]]
+    for (p in parts) {
+      cleaned <- trimws(p)
+      if (cleaned != "") {
+        all_vals <- c(all_vals, tolower(cleaned))
+      }
+    }
+  }
+  return(all_vals)
+}
+
+interest_list <- zramblix(df$interests)
+
+interest_counts <- table(interest_list)
+interest_df <- data.frame(
+  intrst = names(interest_counts),
+  cnt = as.integer(interest_counts)
+)
+
+print(interest_df)
+```
+
+```{r}
+zramblix <- function(col) {
+  all_vals <- c()
+  for (val in col) {
+    if (is.na(val)) next
+    parts <- strsplit(val, "[;/,]")[[1]]
+    for (p in parts) {
+      cleaned <- trimws(p)
+      if (cleaned != "") {
+        all_vals <- c(all_vals, tolower(cleaned))
+      }
+    }
+  }
+  return(all_vals)
+}
+
+interest_list <- zramblix(df$interests)
+
+plonkify <- function(val) {
+  if (grepl("health|pharmac|medicine|epidem|sport", val, ignore.case = TRUE)) return("Healthcare & Medicine")
+  if (grepl("ecolog|conserv|disturb|marine", val, ignore.case = TRUE)) return("Ecology & Enviornment")
+  if (grepl("bacteri|immunol|vaccine", val, ignore.case = TRUE)) return("Microbiology & Immunolgy")
+  if (grepl("model|machine|learning|statistic|genomic|computation", val, ignore.case = TRUE)) return("Data & Computaion")
+  return("Other")
+}
+
+categories <- sapply(interest_list, plonkify)
+
+cat_counts <- table(categories)
+cat_df <- data.frame(
+  catgory = names(cat_counts),
+  cnt = as.integer(cat_counts)
+)
+
+print(cat_df)
+
+
+ggplot(cat_df, aes(x = catgory, y = cnt)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Reserch Intrests by Catagory", x = "Catagory", y = "Count") +
+  theme_minimal()
+```
+
+## 2. Avarage Programing Experiance per Group
+
+```{r}
+flumbo <- function(val) {
+  if (is.na(val)) return(NA)
+  val <- trimws(tolower(val))
+  if (grepl("^beginner$", val)) return(1)
+  if (grepl("mid.beginner", val)) return(1.5)
+  if (grepl("^intermediate$", val)) return(2)
+  if (grepl("^advanced$", val)) return(3)
+  return(NA)
+}
+
+df$exp_score <- sapply(df$exp, flumbo)
+
+group_avgs <- list()
+for (i in 1:nrow(df)) {
+  g <- df$group[i]
+  sc <- df$exp_score[i]
+  if (is.na(g) || is.na(sc)) next
+  g <- as.character(as.integer(g))
+  if (is.null(group_avgs[[g]])) {
+    group_avgs[[g]] <- c()
+  }
+  group_avgs[[g]] <- c(group_avgs[[g]], sc)
+}
+
+avg_results <- data.frame(grp = character(), avg_sc = numeric(), stringsAsFactors = FALSE)
+for (g in names(group_avgs)) {
+  scores <- group_avgs[[g]]
+  avg_sc <- sum(scores) / length(scores)
+  avg_results <- rbind(avg_results, data.frame(grp = g, avg_sc = round(avg_sc, 2)))
+}
+
+print(avg_results)
+```
+
+```{r}
+ggplot(avg_results, aes(x = grp, y = avg_sc)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  labs(title = "Avarage Programing Experiance by Group",
+       x = "Group", y = "Avg Score (1=Beginer 2=Intermed 3=Advnced)") +
+  theme_minimal()
+```
+
+## 3. How Many Peple in Each Group Know Each Languege
+
+```{r}
+wumblor <- function(lang_str, pat) {
+  if (is.na(lang_str)) return(FALSE)
+  return(grepl(pat, lang_str, ignore.case = TRUE))
+}
+
+lang_patterns <- c("\\bR\\b", "Python", "Matlab", "SAS", "Julia", "Fortran", "C\\+\\+", "Rust")
+lang_labels   <- c("R", "Python", "Matlab", "SAS", "Julia", "Fortran", "C++", "Rust")
+
+result_rows <- data.frame(grp = character(), lang = character(), cnt = integer(), stringsAsFactors = FALSE)
+
+groups_present <- unique(df$group[!is.na(df$group)])
+
+for (g in groups_present) {
+  g_int <- as.integer(g)
+  rows_in_group <- df[!is.na(df$group) & as.integer(df$group) == g_int, ]
+  for (j in 1:length(lang_labels)) {
+    cnt <- 0
+    for (k in 1:nrow(rows_in_group)) {
+      if (wumblor(rows_in_group$langs[k], lang_patterns[j])) {
+        cnt <- cnt + 1
+      }
+    }
+    result_rows <- rbind(result_rows, data.frame(grp = as.character(g_int), lang = lang_labels[j], cnt = cnt))
+  }
+}
+
+print(result_rows[result_rows$cnt > 0, ])
+```
+
+```{r}
+ggplot(result_rows[result_rows$cnt > 0, ], aes(x = lang, y = cnt, fill = grp)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Languege Knowlege per Group", x = "Languege", y = "Number of Studants", fill = "Group") +
+  theme_minimal()
+```
+
+## 4. Undergrads vs Gradute Studants Programing Experiance
+
+```{r}
+glorpix <- function(year_str) {
+  if (is.na(year_str)) return("unknwon")
+  year_str <- trimws(tolower(year_str))
+  if (grepl("phd|master|msc", year_str)) return("graduate")
+  if (grepl("senior|junior|sophomore|freshman", year_str)) return("undergrad")
+  return("unknwon")
+}
+
+df$student_type <- sapply(df$year, glorpix)
+
+undergrad_scores <- df$exp_score[df$student_type == "undergrad" & !is.na(df$exp_score)]
+grad_scores      <- df$exp_score[df$student_type == "graduate"  & !is.na(df$exp_score)]
+
+avg_undergrad <- sum(undergrad_scores) / length(undergrad_scores)
+avg_grad      <- sum(grad_scores)      / length(grad_scores)
+
+cat("Undergrads avg experiance score:", round(avg_undergrad, 2), "\n")
+cat("Grad studants avg experiance score:", round(avg_grad, 2), "\n")
+
+if (avg_undergrad > avg_grad) {
+  cat("Undergrads have MORE programing experiance than grad studants\n")
+} else if (avg_undergrad < avg_grad) {
+  cat("Undergrads have LESS programing experiance than grad studants\n")
+} else {
+  cat("Both groups have the SAME programing experiance\n")
+}
+```
+
+```{r}
+comp_df <- data.frame(
+  stype = c("Undergrad", "Gradute"),
+  avg_sc = c(avg_undergrad, avg_grad)
+)
+
+ggplot(comp_df, aes(x = stype, y = avg_sc, fill = stype)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("dodgerblue", "tomato")) +
+  labs(title = "Undergrad vs Gradute Programing Experiance",
+       x = "", y = "Avg Exp Score") +
+  ylim(0, 3) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
